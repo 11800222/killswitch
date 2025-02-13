@@ -104,7 +104,13 @@ func main() {
 
 			if len(ks.P2PInterfaces) > 0 {
 				for k := range ks.P2PInterfaces {
-					ruleContent := fmt.Sprintf("pass on %s all\n", k)
+					var ruleContent string
+					// local network traffic
+					for k2 := range ks.UpInterfaces {
+						ruleContent += fmt.Sprintf("pass from $int_%s:network to $int_%s:network\n", k2, k2)
+					}
+					ruleContent = fmt.Sprintf("pass on %s all\n", k)
+
 					err = os.WriteFile("/tmp/pf_rule_pass_for_vpn.conf", []byte(ruleContent), 0644)
 				}
 

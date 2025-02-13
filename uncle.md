@@ -5,6 +5,11 @@
 
 # build 
 ```shell
+sudo make
+```
+
+
+```shell
 go mod tidy
 
 go mod vendor
