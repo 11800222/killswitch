@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sync"
 )
 
 // Network struct
@@ -14,6 +15,7 @@ type Network struct {
 	P2PInterfaces map[string][]string
 	PeerIP        string
 	PFRules       bytes.Buffer
+	Mu            sync.Mutex
 }
 
 // New returns a Network struct
@@ -43,6 +45,8 @@ func New(peerIP string) (*Network, error) {
 
 // GetActive finds active interfaces
 func (n *Network) GetActive() error {
+	n.Mu.Lock()
+	defer n.Mu.Unlock()
 	for _, i := range n.Interfaces {
 		if i.Flags&net.FlagUp == 0 {
 			continue // interface down
