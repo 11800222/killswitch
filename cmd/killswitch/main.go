@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/vpn-kill-switch/killswitch"
 )
@@ -36,6 +37,7 @@ func main() {
 		e     = flag.Bool("e", false, "`Enable` load the pf rules")
 		p     = flag.Bool("p", false, "`Print` the pf rules")
 		v     = flag.Bool("v", false, fmt.Sprintf("Print version: %s", version))
+		w     = flag.Bool("w", false, "wait for available interfaces")
 		leak  = flag.Bool("leak", false, "Allow ICMP (ping) and DNS requests outside VPN")
 		local = flag.Bool("local", false, "Allow local network traffic")
 	)
@@ -79,8 +81,40 @@ func main() {
 		exit1(err)
 	}
 
+	//block all at boot before hand, then release when VPN is connected
 	if len(ks.UpInterfaces) == 0 {
-		exit1(fmt.Errorf("No active interfaces found, verify network settings, use (\"%s -h\") for help.\n", os.Args[0]))
+		// disable first to avoid next enable cmd return err state
+		exec.Command("pfctl", "-d").CombinedOutput()
+		output, err := exec.Command("pfctl",
+			"-Fa",
+			"-f",
+			"/etc/boot_block.pf.conf",
+			"-e").CombinedOutput()
+		if err != nil {
+			err_text := err.Error()
+			exit1(fmt.Errorf("\n%s: %s\nCommand output: %s",
+				killswitch.Green("block all at boot failed 222"),
+				err_text,        // This will show the actual error message
+				string(output)), // This will show the command's output
+			)
+		}
+
+	}
+
+	if *w {
+		counter := 0
+		for {
+			fmt.Println("waiting for active interfaces Counter:", counter)
+			time.Sleep(1 * time.Second)
+			counter++
+			err = ks.GetActive()
+			if err != nil {
+				exit1(err)
+			}
+			if len(ks.P2PInterfaces) > 0 {
+				break
+			}
+		}
 	}
 
 	fmt.Println("Interface  MAC address         IP")
@@ -104,6 +138,7 @@ func main() {
 	}
 
 	if len(ks.P2PInterfaces) == 0 {
+		// should not happen when -w is used
 		exit1(fmt.Errorf(fmt.Sprintf("\n%s",
 			killswitch.Red("No VPN interface found, verify VPN is connected")),
 		))
