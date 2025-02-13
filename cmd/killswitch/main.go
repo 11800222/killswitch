@@ -1,6 +1,7 @@
 package main
 
 import (
+	"11800222/killswitch"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -9,8 +10,7 @@ import (
 	"os/exec"
 	"strings"
 	"time"
-
-	"github.com/vpn-kill-switch/killswitch"
+	//"github.com/vpn-kill-switch/killswitch"
 )
 
 // PadRight add spaces for aligning the output
@@ -37,7 +37,7 @@ func main() {
 		e     = flag.Bool("e", false, "`Enable` load the pf rules")
 		p     = flag.Bool("p", false, "`Print` the pf rules")
 		v     = flag.Bool("v", false, fmt.Sprintf("Print version: %s", version))
-		w     = flag.Bool("w", false, "wait for available interfaces")
+		w     = flag.Bool("w", false, "just add vpn pass to existed pf rules, when its interface is detected")
 		leak  = flag.Bool("leak", false, "Allow ICMP (ping) and DNS requests outside VPN")
 		local = flag.Bool("local", false, "Allow local network traffic")
 	)
@@ -81,39 +81,48 @@ func main() {
 		exit1(err)
 	}
 
-	//block all at boot before hand, then release when VPN is connected
-	if len(ks.UpInterfaces) == 0 {
-		// disable first to avoid next enable cmd return err state
-		exec.Command("pfctl", "-d").CombinedOutput()
-		output, err := exec.Command("pfctl",
-			"-Fa",
-			"-f",
-			"/etc/boot_block.pf.conf",
-			"-e").CombinedOutput()
-		if err != nil {
-			err_text := err.Error()
-			exit1(fmt.Errorf("\n%s: %s\nCommand output: %s",
-				killswitch.Green("block all at boot failed 222"),
-				err_text,        // This will show the actual error message
-				string(output)), // This will show the command's output
-			)
-		}
-
-	}
-
 	if *w {
 		counter := 0
 		for {
+			counter++
 			fmt.Println("waiting for active interfaces Counter:", counter)
 			time.Sleep(1 * time.Second)
-			counter++
-			err = ks.GetActive()
+
+			ks, err = killswitch.New(*ip)
 			if err != nil {
 				exit1(err)
 			}
+
+			ks.Mu.Lock()
+			activeErr := ks.GetActive()
+			ks.Mu.Unlock()
+
+			if activeErr != nil {
+				fmt.Printf("active_err Error: %v\n", activeErr)
+				exit1(err)
+			}
+
 			if len(ks.P2PInterfaces) > 0 {
+				for k := range ks.P2PInterfaces {
+					ruleContent := fmt.Sprintf("pass on %s all\n", k)
+					err = os.WriteFile("/tmp/pf_rule_pass_for_vpn.conf", []byte(ruleContent), 0644)
+				}
+
+				output, err := exec.Command("pfctl",
+					"-a", "vpn_in_use",
+					"-e", // important
+					"-f",
+					"/tmp/pf_rule_pass_for_vpn.conf").CombinedOutput()
+
+				if err != nil {
+					fmt.Printf("Error: %v\n", err)
+				}
+				fmt.Printf("Output: %s\n", output)
 				break
 			}
+		}
+		if err != nil {
+			exit1(err)
 		}
 	}
 
