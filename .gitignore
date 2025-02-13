@@ -4,3 +4,64 @@ coverage.out
 .goxc.local.json
 .goxc.json
 build
+
+
+
+# Go specific
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/vendor/
+/bin/
+/pkg/
+
+# Go workspace file
+go.work
+
+# IntelliJ IDEA specific
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# macOS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# VS Code specific
+.vscode/
+
+# Temp files
+*.log
+*.tmp
+*~
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug files
+debug/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories (remove if using go modules)
+/gopath/
+/goroot/
+
+# Build output
+build/
+dist/
