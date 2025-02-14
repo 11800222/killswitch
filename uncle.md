@@ -1,4 +1,8 @@
 # mods
+- adds -w mode, which does the following:
+  - loop for a vpn interface detected
+  - once detected, write pass rule for the vpn **and** local to a tmp file
+  - enable the rules as predefined anchor
 
 
 
