@@ -86,6 +86,7 @@ func main() {
 		for {
 			counter++
 			fmt.Println("waiting for active interfaces Counter:", counter)
+			fmt.Println("current active interfaces:", ks.UpInterfaces, ks.P2PInterfaces)
 			time.Sleep(1 * time.Second)
 
 			ks, err = killswitch.New(*ip)
@@ -102,7 +103,7 @@ func main() {
 				exit1(err)
 			}
 
-			if len(ks.P2PInterfaces) > 0 {
+			if len(ks.P2PInterfaces) > 0 && len(ks.UpInterfaces) > 0 {
 				var ruleContent string
 				// local network
 				for k2 := range ks.UpInterfaces {
